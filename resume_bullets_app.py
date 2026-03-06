@@ -3,7 +3,7 @@ import textwrap
 import streamlit as st
 import os
 os.environ["OPENAI_API_KEY"]=st.secrets["OPENAI_API_KEY"]
-import openai from ChatOpenAI
+from openai import ChatOpenAI
 
 
 def generate_star_bullets_llm(
@@ -144,6 +144,7 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
 
 
 
