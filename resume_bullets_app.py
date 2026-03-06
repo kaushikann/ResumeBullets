@@ -38,7 +38,7 @@ Return ONLY the bullet points as a numbered list (e.g. "1. ...", "2. ..."), one 
 """
 
     try:
-        response = client.chat.completions.create(
+        response = client.completions.create(
             model="gpt-4.1-mini",
             messages=[
                 {"role": "system", "content": "You are a world-class resume writing assistant."},
@@ -144,6 +144,7 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
 
 
 
