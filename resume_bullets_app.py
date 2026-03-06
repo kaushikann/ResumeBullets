@@ -1,6 +1,9 @@
 import textwrap
 
 import streamlit as st
+import os
+os.environ["OPENAI_API_KEY"]=st.secrets["OPENAI_API_KEY"]
+import openai from ChatOpenAI
 
 
 def generate_star_bullets_llm(
@@ -13,8 +16,7 @@ def generate_star_bullets_llm(
     Falls back to an empty list if the client or API key is not configured.
     """
 
-    if openai is None or not os.getenv("OPENAI_API_KEY"):
-        return []
+
 
     prompt = f"""
 You are an expert resume writer.
@@ -142,5 +144,6 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
 
 
