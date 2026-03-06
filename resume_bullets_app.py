@@ -3,64 +3,78 @@ import textwrap
 import streamlit as st
 
 
-def generate_star_bullets(job_role: str, impact: str, challenges: str, num_points: int = 5) -> list[str]:
-    job_role = job_role.strip()
-    impact = impact.strip()
-    challenges = challenges.strip()
+def generate_star_bullets_llm(
+    job_role: str, impact: str, challenges: str, num_points: int = 5
+) -> list[str]:
+    """
+    Generate STAR bullets using an LLM (OpenAI as an example).
+    It is not always necessary to generate all 5 bullet points; generate as many high-quality, quantifiable STAR bullets as are relevant (up to num_points).
+    Each bullet must use a unique metric (no repeats of %/$/time/volume/scale per bullet), and each bullet should be concise—about 10 words in length.
+    Falls back to an empty list if the client or API key is not configured.
+    """
 
-    if not job_role or not impact or not challenges:
+    if openai is None or not os.getenv("OPENAI_API_KEY"):
         return []
 
-    base_context = (
-        f"As a {job_role}, you faced challenges such as {challenges}. "
-        f"Through your actions, you created impact like {impact}."
-    )
+    prompt = f"""
+You are an expert resume writer.
 
-    # Re-usable STAR fragments that we can mix slightly to get 5 bullets
-    templates = [
-        (
-            "Led efforts as {role} to address {challenges}, "
-            "owning the end‑to‑end task of designing and executing solutions, "
-            "which resulted in {impact}."
-        ),
-        (
-            "Partnered with cross‑functional stakeholders in the {role} role to tackle {challenges}, "
-            "defining clear goals and action plans that delivered {impact}."
-        ),
-        (
-            "Analyzed the situation around {challenges} as {role}, "
-            "prioritized the highest‑value tasks, and implemented targeted improvements, "
-            "achieving measurable results such as {impact}."
-        ),
-        (
-            "Proactively identified {challenges} while working as {role}, "
-            "framed the task with success metrics, executed on a focused action plan, "
-            "and drove outcomes including {impact}."
-        ),
-        (
-            "Owned critical initiatives as {role} in the context of {challenges}, "
-            "taking decisive actions and continuously iterating, "
-            "ultimately delivering quantifiable results like {impact}."
-        ),
-    ]
+Generate exactly {num_points} resume bullet points that follow the STAR (Situation, Task, Action, Result) framework and are highly quantifiable.
 
+Context:
+- Job role: {job_role}
+- Impact created: {impact}
+- Challenges faced: {challenges}
+
+Guidelines:
+- Each bullet must start with a strong action verb.
+- Each bullet must clearly describe the situation, the task, the actions taken, and the measurable result.
+- Each bullet must contain at least one specific metric (%, $, time, volume, or scale).
+- Avoid first person ("I", "my") and company‑specific confidential information.
+
+Return ONLY the bullet points as a numbered list (e.g. "1. ...", "2. ..."), one per line.
+"""
+
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4.1-mini",
+            messages=[
+                {"role": "system", "content": "You are a world-class resume writing assistant."},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.4,
+        )
+        text = response["choices"][0]["message"]["content"]
+    except Exception as e:
+        st.error(f"LLM error while generating bullets: {e}")
+        return []
+
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
     bullets: list[str] = []
 
-    for i in range(num_points):
-        template = templates[i % len(templates)]
-        bullet = template.format(role=job_role, challenges=challenges, impact=impact)
-        bullets.append(bullet)
+    for line in lines:
+        # Strip leading numbering or dashes
+        if line[0].isdigit():
+            # Remove patterns like "1. " or "1)" etc.
+            parts = line.split(".", 1)
+            if len(parts) > 1 and parts[0].isdigit():
+                line = parts[1].strip()
+            else:
+                parts = line.split(")", 1)
+                if len(parts) > 1 and parts[0].isdigit():
+                    line = parts[1].strip()
+        if line.startswith("- "):
+            line = line[2:].strip()
 
-    # Add a short preface reminding the user to customize metrics
-    bullets = [
-        textwrap.fill(
-            b.replace("like ", "such as ").replace("including ", "such as "),
-            width=100,
-        )
-        for b in bullets
-    ]
+        if not line:
+            continue
 
-    return bullets
+        bullets.append(textwrap.fill(line, width=100))
+
+        if len(bullets) >= num_points:
+            break
+
+    return bullets[:num_points]
 
 
 def main() -> None:
@@ -104,7 +118,7 @@ def main() -> None:
             st.error("Please fill in all three fields to generate bullet points.")
             return
 
-        bullets = generate_star_bullets(job_role, impact, challenges, num_points=5)
+        bullets = generate_star_bullets_llm(job_role, impact, challenges, num_points=5)
 
         if not bullets:
             st.warning("Unable to generate bullet points. Please refine your inputs and try again.")
@@ -128,4 +142,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
 
